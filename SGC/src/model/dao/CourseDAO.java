@@ -61,7 +61,7 @@ public class CourseDAO {
     public static List<Course> getCoursesByTeacher(int teacherId, Credentials creds) throws DataAccessException {
         String sql = "SELECT c.courseID, c.levelName, c.start_day, c.start_month, c.start_year, c.active " +
                 "FROM courses c " +
-                "JOIN assignments a ON c.courseID = a.courseID " +
+                "JOIN assignments a ON c.courseID = a.courseID AND c.level_name = a.level_name " +
                 "WHERE a.teacherID = ? " +
                 "ORDER BY c.start_year DESC, c.start_month DESC, c.start_day DESC";
 
@@ -139,6 +139,102 @@ public class CourseDAO {
             throw new DataAccessException("Errore nel recupero corsi attivi", e);
         }
     }
+
+    // funzione che controlla se un corso è attivo, gli si passa l'ID
+    public boolean isCourseActive(int courseId, Credentials creds) throws DataAccessException {
+        String sql = "SELECT * FROM courses WHERE courseID = ? AND active = TRUE";
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, courseId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean("active");
+                }
+                // Se non trova il corso, restituisce false
+                return false;
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore nella verifica stato corso: " + e.getMessage(), e);
+        }
+    }
+
+    // funzione che prende i corsi legati ad uno student ID
+    public List<Course> getCoursesByStudent(int studentId, Credentials creds) throws DataAccessException {
+        String sql = "SELECT c.* FROM courses c " +
+                "JOIN enrollments e ON c.courseID = e.course_id AND c.level_name = e.level_name " +
+                "WHERE e.student_id = ? AND c.active = TRUE";
+
+        List<Course> courses = new ArrayList<>();
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, studentId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    // Recupera i componenti della data
+                    Integer startDay = rs.getObject("start_day", Integer.class);
+                    Integer startMonth = rs.getObject("start_month", Integer.class);
+                    Integer startYear = rs.getObject("start_year", Integer.class);
+
+                    LocalDate startDate = null;
+                    if (startDay != null && startMonth != null && startYear != null) {
+                        startDate = LocalDate.of(startYear, startMonth, startDay);
+                    }
+
+                    Course newCourse = new Course(
+                            LevelName.valueOf(rs.getString("levelName")),
+                            startDate,
+                            rs.getBoolean("active")
+                    );
+
+                    newCourse.setCourseID(rs.getInt("CourseID"));
+
+                    courses.add(newCourse);
+                }
+            }
+            return courses;
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore nel recupero corsi per studente", e);
+        }
+    }
+
+    public boolean hasSharedActiveCourse(int teacherId, int studentId, Credentials creds)
+            throws DataAccessException {
+
+        String sql = "SELECT EXISTS( " +
+                "    SELECT 1 " +
+                "    FROM assignments a " +
+                "    INNER JOIN enrollments e ON a.course_id = e.course_id AND a.level_name = e.level_name " +
+                "    INNER JOIN courses c ON a.course_id = c.courseID AND a.level_name = c.level_name " +
+                "    WHERE a.teacher_id = ? " +
+                "    AND e.student_id = ? " +
+                "    AND c.active = TRUE " +
+                ")";
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, teacherId);
+            stmt.setInt(2, studentId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getBoolean(1);
+                }
+            }
+            return false;
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore verifica corso condiviso: " + e.getMessage(), e);
+        }
+    }
 }
+
 
 

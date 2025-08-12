@@ -11,7 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class StudentDAO {
-    public Student createStudent(Student student, Credentials creds) throws DataAccessException {
+    public void createStudent(Student student, Credentials creds) throws DataAccessException {
         String sql = "INSERT INTO students (name, last_name, cf, birth_place, telephone, " +
                 "birth_date, city, cap, street, street_number) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -42,7 +42,6 @@ public class StudentDAO {
                 if (generatedKeys.next()) {
                     int newId = generatedKeys.getInt(1);
                     student.setStudentID(newId);  // Aggiorna l'oggetto Student
-                    return student;
                 } else {
                     throw new DataAccessException("Inserimento studente fallito, nessun ID ottenuto.");
                 }

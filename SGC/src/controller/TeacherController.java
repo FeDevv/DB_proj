@@ -39,7 +39,7 @@ public class TeacherController extends UserController{
             case 2 -> {
                 showCourses();
             }
-            case 3 -> registraAssenzaStudente();    // Funzione comune
+            case 3 -> recordStudentAbsence();    // Funzione comune
             case 4 -> CommonView.showMessage("Generazione report settimanale...");
             case 5 -> CommonView.showMessage("Storico assenze...");
             case 0 -> { return false; } // Logout

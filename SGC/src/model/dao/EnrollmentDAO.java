@@ -14,16 +14,18 @@ public class EnrollmentDAO {
     //funzione per iscrivere uno studente
     public void enrollStudent(int studentId, int courseId, LevelName level, Credentials creds)
             throws DataAccessException {
-        String sql = "INSERT INTO enrollments (student_id, course_id, level_name, enrollment_date) " +
-                "VALUES (?, ?, ?, ?)";
+        int adminID = creds.getID();
+        String sql = "INSERT INTO enrollments (student_id, admin_ID, course_id, level_name, enrollment_date) " +
+                "VALUES (?, ?, ?, ?, ?)";
 
         try (Connection conn = ConnectionFactory.getConnection(creds);
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, studentId);
-            stmt.setInt(2, courseId);
-            stmt.setString(3, level.name());
-            stmt.setDate(4, java.sql.Date.valueOf(LocalDate.now()));
+            stmt.setInt(2, adminID);
+            stmt.setInt(3, courseId);
+            stmt.setString(4, level.name());
+            stmt.setDate(5, java.sql.Date.valueOf(LocalDate.now()));
 
             int affectedRows = stmt.executeUpdate();
 
@@ -61,3 +63,4 @@ public class EnrollmentDAO {
         }
     }
 }
+

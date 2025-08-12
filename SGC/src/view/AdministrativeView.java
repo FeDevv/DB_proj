@@ -1,5 +1,6 @@
 package view;
 
+import exception.DataAccessException;
 import model.domain.*;
 import model.Utils.DateUtils;
 
@@ -249,13 +250,63 @@ public class AdministrativeView {
     public static void showAvailableCourses(List<Course> courses) {
         System.out.println("\n--- CORSI DISPONIBILI ---");
         System.out.println("ID\tLivello\t\tData inizio\tStato");
+        int index = 1;
         for (Course course : courses) {
-            System.out.printf("%d\t%-10s\t%s\t%s%n",
+            System.out.printf("%d\t%d\t%-10s\t%s\t%s%n",
+                    index++,
                     course.getCourseID(),
                     course.getLevel(),
                     DateUtils.formatDate(course.getActivationDate()),
                     course.isActive() ? "Attivo" : "Non attivo");
         }
+    }
+
+    public static Course chooseCourse(List<Course> courses) throws IOException {
+        if (courses == null || courses.isEmpty()) {
+            System.out.println("Nessun corso disponibile.");
+            return null;
+        }
+
+        showAvailableCourses(courses);
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        int scelta = -1;
+
+        do {
+            System.out.print("Seleziona un corso (1-" + courses.size() + "): ");
+            String input = reader.readLine();
+
+            try {
+                scelta = Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Input non valido, inserisci un numero intero.");
+                continue;
+            }
+
+            if (scelta < 1 || scelta > courses.size()) {
+                System.out.println("Numero fuori intervallo. Riprova.");
+            }
+
+        } while (scelta < 1 || scelta > courses.size());
+
+        return courses.get(scelta - 1);
+    }
+
+    public static int askStudentStatus() throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        int choice = -1;
+        while(true){
+            System.out.println("\n--- TIPO DI STUDENTE ---");
+            System.out.println("1. Studente nuovo");
+            System.out.println("2. Studente esistente");
+            System.out.print("Scelta: ");
+            choice = Integer.parseInt(reader.readLine().trim());
+            if (choice == 1 || choice == 2) {
+                break;
+            }
+            showInvalidOption();
+        }
+        return choice;
     }
 
     public static void showConflictingLessons(List<Lesson> conflictingLessons) {

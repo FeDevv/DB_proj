@@ -61,7 +61,7 @@ public class AdministrativeController extends UserController{
                 //iscrizione studente a corso
                 enrollStudentToCourse();
             }
-            case 7 -> registraAssenzaStudente();  // Funzione comune
+            case 7 -> recordStudentAbsence();  // Funzione comune
             case 8 -> CommonView.showMessage("Inserimento nuovo insegnante...");
             case 9 -> CommonView.showMessage("Assegnazione insegnante a corso...");
             case 10 -> CommonView.showMessage("Generazione report mensile...");
@@ -209,20 +209,51 @@ public class AdministrativeController extends UserController{
     }
 
     private void enrollStudentToCourse() {
-        try{
-            Student student = new Student(AdministrativeView.inputStudentDetails()); //inserisci le info dello studente
-            Course course = new Course(AdministrativeView.inputCourseDetails()); //inserisci le info del corso
+        try {
+            Student newStudent = null;
+            if (AdministrativeView.askStudentStatus() == 1){
+                //nuovo studente
+                newStudent = AdministrativeView.inputStudentDetails();
+                StudentDAO studentDAO = new StudentDAO();
+                studentDAO.createStudent(newStudent, creds);
+                CommonView.showMessage("Studente creato con ID: " + newStudent.getStudentID());
+            } else if (AdministrativeView.askStudentStatus() == 2){
+                //studente gia esistente
+                StudentDAO studentDAO = new StudentDAO();
+                CommonView.showMessage("Inserisci l'ID dello studente");
+                int id = Integer.parseInt(CommonView.getGenericString().trim());
+                newStudent = studentDAO.getStudentByID(id, creds);
+                if (newStudent == null) {
+                    CommonView.showMessage("Studente non trovato con ID: " + id);
+                    return;
+                }
+            }
 
+            // 2. dai una lista di corsi attivi e fai scegliere il corso al quale iscriversi
+            CourseDAO courseDAO = new CourseDAO();
+            List<Course> courses = courseDAO.getActiveCourses(creds);
+
+            Course chosenCourse = AdministrativeView.chooseCourse(courses);
+
+            // 3. Iscrizione
             EnrollmentDAO enrollmentDAO = new EnrollmentDAO();
+            assert newStudent != null;
+            assert chosenCourse != null;
+            enrollmentDAO.enrollStudent(
+                    newStudent.getStudentID(),
+                    chosenCourse.getCourseID(),
+                    chosenCourse.getLevel(),
+                    creds
+            );
 
-            enrollmentDAO.enrollStudent(student.getStudentID(), course.getCourseID(), course.getLevel(), creds);
+            CommonView.showMessage("Iscrizione completata con successo!");
 
-        } catch {
-
+        } catch (IOException e) {
+            CommonView.showMessage("Errore input: " + e.getMessage());
+        } catch (DataAccessException e) {
+            CommonView.showMessage("Errore database: " + e.getMessage());
         }
-
     }
-
 
     @Override
     protected void showExitMessage() {

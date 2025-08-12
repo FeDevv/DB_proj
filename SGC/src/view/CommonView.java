@@ -1,5 +1,7 @@
 package view;
 
+import model.Utils.DateUtils;
+import model.domain.Absence;
 import model.domain.Course;
 import model.domain.LevelName;
 import model.domain.Student;
@@ -7,6 +9,7 @@ import model.domain.Student;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.time.LocalDate;
 import java.util.List;
 
 public class CommonView {
@@ -58,6 +61,52 @@ public class CommonView {
                     s.getName(),
                     s.getLastName(),
                     s.getCf());
+        }
+    }
+
+    public static Absence inputAbsenceDetails() throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.println("\n--- REGISTRAZIONE ASSENZA ---");
+
+        System.out.print("ID Studente: ");
+        int studentId = Integer.parseInt(reader.readLine().trim());
+
+        LocalDate date = null;
+        while (date == null) {
+            try {
+                System.out.print("Data assenza (gg/mm/aaaa): ");
+                String[] parts = reader.readLine().trim().split("/");
+                date = LocalDate.of(
+                        Integer.parseInt(parts[2]),
+                        Integer.parseInt(parts[1]),
+                        Integer.parseInt(parts[0])
+                );
+
+                if (date.isAfter(LocalDate.now())) {
+                    System.out.println("La data non può essere futura!");
+                    date = null;
+                }
+            } catch (Exception e) {
+                System.out.println("Formato data non valido!");
+            }
+        }
+
+        return new Absence(studentId, date);
+    }
+
+    public static void showAbsences(List<Absence> absences) {
+        if (absences == null || absences.isEmpty()) {
+            System.out.println("Nessuna assenza registrata.");
+            return;
+        }
+
+        System.out.println("\n--- ELENCO ASSENZE ---");
+        System.out.println("Data");
+        System.out.println("--------------------------------");
+
+        for (Absence absence : absences) {
+            System.out.printf("%s%n", DateUtils.formatDate(absence.getDate()));
         }
     }
 

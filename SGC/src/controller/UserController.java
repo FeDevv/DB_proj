@@ -2,15 +2,13 @@ package controller;
 
 import exception.ApplicationException;
 import exception.DataAccessException;
+import model.dao.AbsenceDAO;
+import model.dao.CourseDAO;
+import model.dao.EnrollmentDAO;
 import model.dao.StudentDAO;
-import model.domain.Credentials;
-import model.domain.LevelName;
-import model.domain.Role;
-import model.domain.Student;
+import model.domain.*;
 import view.CommonView;
 
-import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 
 
@@ -57,6 +55,35 @@ public abstract class UserController {
         }
     }
 
+    protected void recordStudentAbsence() {
+        try {
+            // Input dati assenza
+            Absence absence = CommonView.inputAbsenceDetails();
+
+            if (creds.getRole() == Role.INSEGNANTE) {
+                // Verifica sicurezza per insegnanti con metodo efficiente
+                CourseDAO courseDAO = new CourseDAO();
+                if (!courseDAO.hasSharedActiveCourse(
+                        creds.getID(),
+                        absence.getStudentId(),
+                        creds)) {
+
+                    CommonView.showMessage("Operazione non permessa: " +
+                            "lo studente non è nei tuoi corsi attivi!");
+                    return;
+                }
+            }
+
+            // Registrazione assenza
+            AbsenceDAO absenceDAO = new AbsenceDAO();
+            absenceDAO.recordAbsence(absence, creds);
+
+            CommonView.showMessage("Assenza registrata con successo!");
+
+        } catch (Exception e) {
+            CommonView.showMessage("Errore: " + e.getMessage());
+        }
+    }
 
     protected void registraAssenzaStudente() {
 
