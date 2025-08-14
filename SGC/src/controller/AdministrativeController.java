@@ -8,12 +8,10 @@ import view.AdministrativeView;
 import view.CommonView;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.time.LocalTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static view.CommonView.askCourseSelection;
 import static view.CommonView.showStudentsList;
@@ -35,7 +33,7 @@ public class AdministrativeController extends UserController{
     }
 
     @Override
-    protected boolean handleMenuChoice(int choice) {
+    protected boolean handleMenuChoice(int choice) throws IOException, DataAccessException {
         switch (choice) {
             case 1 -> {
                 //stampa studenti di un corso
@@ -61,12 +59,19 @@ public class AdministrativeController extends UserController{
                 //iscrizione studente a corso
                 enrollStudentToCourse();
             }
-            case 7 -> recordStudentAbsence();  // Funzione comune
-            case 8 -> CommonView.showMessage("Inserimento nuovo insegnante...");
+            case 7 -> {
+                //salva assenza di uno studente
+                recordStudentAbsence();
+            }
+            case 8 -> {
+                //crea un nuovo insegnante e inseriscilo nel DB
+                addTeacher();
+            }
             case 9 -> CommonView.showMessage("Assegnazione insegnante a corso...");
-            case 10 -> CommonView.showMessage("Generazione report mensile...");
-            case 11 -> CommonView.showMessage("Generazione report settimanale...");
-            case 12 -> CommonView.showMessage("Visualizzazione assenze classe...");
+            case 10 -> {
+                generateMonthlyReport();
+            }
+            case 11 -> CommonView.showMessage("Visualizzazione assenze classe...");
             case 0 -> { return false; } // Logout
             default -> AdministrativeView.showInvalidOption();
         }
@@ -188,12 +193,10 @@ public class AdministrativeController extends UserController{
                 return;
             }
 
-
             CourseDAO courseDAO = new CourseDAO();
-            courseDAO.insertCourse(newCourse, creds); // Genera l'ID corso
 
             // Aggiorna le lezioni con l'ID corso generato
-            int courseId = newCourse.getCourseID();
+            int courseId = courseDAO.insertCourse(newCourse, creds); // Genera l'ID corso
             for (Lesson lesson : lessons) {
                 lesson.setProgressiveCode(courseId);
             }
@@ -252,6 +255,71 @@ public class AdministrativeController extends UserController{
             CommonView.showMessage("Errore input: " + e.getMessage());
         } catch (DataAccessException e) {
             CommonView.showMessage("Errore database: " + e.getMessage());
+        }
+    }
+
+    private void addTeacher() {
+        try {
+            Teacher newTeacher = AdministrativeView.inputTeacherDetails();
+            TeacherDAO teacherDAO = new TeacherDAO();
+            int generatedId = teacherDAO.insertTeacher(newTeacher, creds);
+
+            // Aggiorna l'oggetto con l'ID generato dal DB
+            newTeacher.setTeacherID(generatedId);
+
+            CommonView.showMessage("Nuovo insegnante con ID: " + generatedId + " creato con successo!");
+        } catch (DataAccessException e) {
+            CommonView.showMessage("Errore di accesso ai dati: " + e.getMessage());
+        } catch (IOException e) {
+            CommonView.showMessage("Errore di input: " + e.getMessage());
+        } catch (Exception e) {
+            CommonView.showMessage("Errore imprevisto: " + e.getMessage());
+        }
+    }
+
+    private void generateMonthlyReport() {
+        TeacherDAO teacherDAO = new TeacherDAO();
+        ReportDAO reportDAO = new ReportDAO();
+
+        try {
+            // 1. Recupera tutti gli insegnanti
+            List<Teacher> teachers = teacherDAO.getAllTeachers(creds);
+
+            // 2. Mostra la lista e seleziona gli insegnanti per il report
+            AdministrativeView.showTeachersList(teachers);
+            List<Teacher> selectedTeachers = AdministrativeView.getSomeTeachers(teachers);
+
+            // 3. Validazione: almeno un insegnante selezionato
+            if (selectedTeachers.isEmpty()) {
+                CommonView.showMessage("Nessun insegnante selezionato. Operazione annullata.");
+                return;
+            }
+
+            // 4. Inserimento dati del report
+            String reportData = AdministrativeView.insertMontlyReportData(selectedTeachers);
+
+            // 5. Creazione oggetto report (primo giorno del mese corrente)
+            MonthlyReport report = new MonthlyReport(
+                    LocalDate.now().withDayOfMonth(1),
+                    reportData
+            );
+
+            // 6. Estrai ID insegnanti
+            List<Integer> teacherIDs = selectedTeachers.stream()
+                    .map(Teacher::getTeacherID)
+                    .collect(Collectors.toList());
+
+            // 7. Inserimento nel database
+            int reportID = reportDAO.insertMonthlyReport(report, creds.getID(), teacherIDs, creds);
+
+            CommonView.showMessage("Report mensile creato con ID: " + reportID);
+
+        } catch (DataAccessException e) {
+            CommonView.showMessage("Errore di accesso al database: " + e.getMessage());
+        } catch (IOException e) {
+            CommonView.showMessage("Errore di input/output: " + e.getMessage());
+        } catch (Exception e) {
+            CommonView.showMessage("Errore imprevisto: " + e.getMessage());
         }
     }
 

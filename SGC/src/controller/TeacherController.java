@@ -2,9 +2,11 @@ package controller;
 
 import exception.DataAccessException;
 import model.dao.CourseDAO;
+import model.dao.ReportDAO;
 import model.domain.Course;
 import model.domain.Credentials;
 import model.domain.Student;
+import model.domain.WeeklyReport;
 import view.CommonView;
 import view.TeacherView;
 
@@ -39,8 +41,12 @@ public class TeacherController extends UserController{
             case 2 -> {
                 showCourses();
             }
-            case 3 -> recordStudentAbsence();    // Funzione comune
-            case 4 -> CommonView.showMessage("Generazione report settimanale...");
+            case 3 -> {
+                recordStudentAbsence();
+            }
+            case 4 -> {
+                generateWeeklyReport();
+            }
             case 5 -> CommonView.showMessage("Storico assenze...");
             case 0 -> { return false; } // Logout
             default -> TeacherView.showInvalidOption();
@@ -82,6 +88,26 @@ public class TeacherController extends UserController{
             // Log dettagliato per il debug
             System.err.println("Errore dettagliato: ");
             e.printStackTrace();
+        }
+    }
+
+    private void generateWeeklyReport() {
+        try {
+            // Crea il payload del report
+            String reportData = TeacherView.generateWeeklyReport(creds.getID());
+
+            // Crea oggetto report per la settimana corrente
+            WeeklyReport report = WeeklyReport.createForCurrentWeek(reportData);
+
+            // Inserisci nel database
+            int reportID = ReportDAO.insertWeeklyReport(report, creds);
+
+            CommonView.showMessage("Report settimanale creato con ID: " + reportID);
+
+        } catch (DataAccessException e) {
+            CommonView.showMessage("Errore di database: " + e.getMessage());
+        } catch (Exception e) {
+            CommonView.showMessage("Errore imprevisto: " + e.getMessage());
         }
     }
 

@@ -1,7 +1,7 @@
 package model.domain;
 
 public class Teacher {
-    private int teacherID;
+    private Integer teacherID;
     private String name;
     private String lastName;
     private String nation;
@@ -11,9 +11,9 @@ public class Teacher {
     private String street;
     private int streetNumber;
 
-    public Teacher(int teacherID, String name, String lastName, String nation,
+    public Teacher(String name, String lastName, String nation,
                    boolean active, String city, String cap, String street, int streetNumber) {
-        this.teacherID = teacherID;
+        this.teacherID = null;
         this.name = name;
         this.lastName = lastName;
         this.nation = nation;
@@ -34,6 +34,8 @@ public class Teacher {
     public String getCap() { return cap; }
     public String getStreet() { return street; }
     public int getStreetNumber() { return streetNumber; }
+
+    public void setTeacherID(Integer teacherID) { this.teacherID = teacherID; }
 
     @Override
     public String toString() {

@@ -9,6 +9,7 @@ import model.dao.StudentDAO;
 import model.domain.*;
 import view.CommonView;
 
+import java.io.IOException;
 import java.util.List;
 
 
@@ -21,7 +22,7 @@ public abstract class UserController {
     }
 
     //metodo principale comune a tutti i ruoli
-    public void start() {
+    public void start() throws IOException, DataAccessException {
         boolean running = true;
         showWelcomeMessage();
 
@@ -35,7 +36,7 @@ public abstract class UserController {
 
     protected abstract void showWelcomeMessage();
     protected abstract int showMenu();
-    protected abstract boolean handleMenuChoice(int choice);
+    protected abstract boolean handleMenuChoice(int choice) throws IOException, DataAccessException;
     protected abstract void showExitMessage();
     protected abstract void printStudentsFromCourse();
 

@@ -13,7 +13,7 @@ import java.util.List;
 
 public class CourseDAO {
     //inserisci un nuovo corso
-    public void insertCourse(Course course, Credentials creds) throws DataAccessException {
+    public int insertCourse(Course course, Credentials creds) throws DataAccessException {
         String sql = "INSERT INTO courses (levelName, start_day, start_month, start_year, active) " +
                 "VALUES (?, ?, ?, ?, ?)";
 
@@ -46,8 +46,7 @@ public class CourseDAO {
             // Recupera l'ID generato
             try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
-                    int newId = generatedKeys.getInt(1);
-                    course.setCourseID(newId);  // Aggiorna l'oggetto Course
+                    return generatedKeys.getInt(1);
                 } else {
                     throw new DataAccessException("Inserimento corso fallito, nessun ID ottenuto.");
                 }

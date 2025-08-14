@@ -66,6 +66,20 @@ public class TeacherView {
         System.out.println("Contatta l'amministrazione per ulteriori informazioni.");
     }
 
+    public static String generateWeeklyReport(int teacherId) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.print("\nInserisci il contenuto del report settimanale: ");
+        String data = reader.readLine().trim();
+
+        StringBuilder report = new StringBuilder();
+        report.append(teacherId).append("\n");
+        report.append("-".repeat(30)).append("\n");
+        report.append(data);
+
+        return report.toString();
+    }
+
     public static void showInvalidOption() {
         System.out.println("Opzione non valida, riprova.");
     }

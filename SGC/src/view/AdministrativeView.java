@@ -1,6 +1,5 @@
 package view;
 
-import exception.DataAccessException;
 import model.domain.*;
 import model.Utils.DateUtils;
 
@@ -12,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class AdministrativeView {
 
@@ -51,16 +51,18 @@ public class AdministrativeView {
         }
 
         System.out.println("\n=== ELENCO INSEGNANTI ===");
-        System.out.println("------------------------------------------------------------------------------------------");
-        System.out.printf("%-5s %-20s %-20s %-15s %-8s %-30s%n",
-                "ID", "Nome", "Cognome", "Nazionalità", "Stato", "Indirizzo");
-        System.out.println("------------------------------------------------------------------------------------------");
+        System.out.println("-------------------------------------------------------------------------------------------------------------");
+        System.out.printf("%-4s %-5s %-20s %-20s %-15s %-8s %-30s%n",
+                "N.", "ID", "Nome", "Cognome", "Nazionalità", "Stato", "Indirizzo");
+        System.out.println("-------------------------------------------------------------------------------------------------------------");
 
+        int counter = 1;
         for (Teacher t : teachers) {
             String stato = t.isActive() ? "Attivo" : "Non attivo";
             String indirizzo = t.getStreet() + " " + t.getStreetNumber() + ", " + t.getCap() + " " + t.getCity();
 
-            System.out.printf("%-5d %-20s %-20s %-15s %-8s %-30s%n",
+            System.out.printf("%-4d %-5d %-20s %-20s %-15s %-8s %-30s%n",
+                    counter++,
                     t.getTeacherID(),
                     t.getName(),
                     t.getLastName(),
@@ -68,7 +70,7 @@ public class AdministrativeView {
                     stato,
                     indirizzo);
         }
-        System.out.println("------------------------------------------------------------------------------------------");
+        System.out.println("-------------------------------------------------------------------------------------------------------------");
         System.out.println("Totale insegnanti: " + teachers.size());
     }
 
@@ -160,9 +162,6 @@ public class AdministrativeView {
 
         while (true) {
             System.out.println("\nNuova lezione:");
-
-            // Non possiamo usare l'ID corso ancora perché non è stato generato
-            // Dovremo impostarlo dopo l'inserimento del corso
 
             // Input giorno settimana
             System.out.println("Giorni disponibili:");
@@ -324,6 +323,82 @@ public class AdministrativeView {
 
         System.out.println("\nSi prega di modificare gli orari o le aule e riprovare.");
     }
+
+    public static Teacher inputTeacherDetails() throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.println("\n--- INSERIMENTO NUOVO INSEGNANTE ---");
+
+        System.out.print("Nome: ");
+        String name = reader.readLine().trim();
+
+        System.out.print("Cognome: ");
+        String lastName = reader.readLine().trim();
+
+        System.out.print("Nazione (es. IT): ");
+        String nation = reader.readLine().trim();
+
+        System.out.println("\n--- INDIRIZZO ---");
+        System.out.print("Città: ");
+        String city = reader.readLine().trim();
+
+        System.out.print("CAP: ");
+        String cap = reader.readLine().trim();
+
+        System.out.print("Via: ");
+        String street = reader.readLine().trim();
+
+        System.out.print("Numero civico: ");
+        int streetNumber = Integer.parseInt(reader.readLine().trim());
+
+        // active = true di default
+        return new Teacher(name, lastName, nation, true, city, cap, street, streetNumber);
+    }
+
+    //selezioni alcuni insegnanti dal totale
+    public static List<Teacher> getSomeTeachers(List<Teacher> teachers) throws IOException {
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        System.out.print("Inserisci i numeri dei docenti separati da virgola: ");
+        String[] input = reader.readLine().trim().split(",");
+
+        List<Teacher> selected = new ArrayList<>();
+        for (String s : input) {
+            try {
+                int index = Integer.parseInt(s.trim()) - 1;
+                if (index >= 0 && index < teachers.size()) {
+                    selected.add(teachers.get(index));
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("Indice non valido: " + s);
+            }
+        }
+        return selected;
+    }
+
+    public static String insertMontlyReportData(List<Teacher> teachers) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+        // Mostra gli insegnanti inclusi nel report
+        System.out.println("\n=== INSEGNANTI NEL REPORT ===");
+        for (Teacher t : teachers) {
+            System.out.printf("ID: %d - %s %s%n",
+                    t.getTeacherID(), t.getName(), t.getLastName());
+        }
+
+        // Chiede il commento
+        System.out.print("\nInserisci il commento per il report: ");
+        String note = reader.readLine().trim();
+
+        // Crea la stringa con gli ID separati da virgola
+        String ids = teachers.stream()
+                .map(t -> String.valueOf(t.getTeacherID()))
+                .collect(Collectors.joining(","));
+
+        // Restituisce il report formattato
+        return ids + "\n" + "-".repeat(30) + "\n" + note;
+    }
+
+
 
     public static void showInvalidOption() {
         System.out.println("Opzione non valida, riprova.");
