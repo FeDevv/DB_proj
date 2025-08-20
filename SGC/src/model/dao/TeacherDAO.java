@@ -82,4 +82,81 @@ public class TeacherDAO {
         }
     }
 
+    public List<Teacher> getAllActiveTeachers(Credentials credentials) throws DataAccessException {
+        String sql = "SELECT * FROM teachers WHERE active = true";
+        List<Teacher> teachers = new ArrayList<>();
+
+        try (Connection conn = ConnectionFactory.getConnection(credentials);
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                Teacher teacher = new Teacher(
+                        rs.getInt("teacherID"),
+                        rs.getString("name"),
+                        rs.getString("lastName"),
+                        rs.getString("nation"),
+                        rs.getBoolean("active"),
+                        rs.getString("city"),
+                        rs.getString("cap"),
+                        rs.getString("street"),
+                        rs.getInt("streetNumber")
+                );
+                teachers.add(teacher);
+            }
+
+            return teachers;
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante il recupero degli insegnanti attivi", e);
+        }
+    }
+
+    public Teacher getTeacherById(int teacherID, Credentials creds) throws DataAccessException {
+        String sql = "SELECT * FROM teachers WHERE teacherID = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, teacherID);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new Teacher(
+                            rs.getString("name"),
+                            rs.getString("lastName"),
+                            rs.getString("nation"),
+                            rs.getBoolean("active"),
+                            rs.getString("city"),
+                            rs.getString("cap"),
+                            rs.getString("street"),
+                            rs.getInt("streetNumber")
+                    );
+                }
+                return null;
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante il recupero dell'insegnante", e);
+        }
+    }
+
+    public void deleteTeacher(int teacherID, Credentials creds) throws DataAccessException {
+        String sql = "DELETE FROM teachers WHERE teacherID = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, teacherID);
+            int affectedRows = stmt.executeUpdate();
+
+            // Controlliamo il risultato dell'operazione
+            if (affectedRows == 0) {
+                throw new DataAccessException("Impossibile eliminare l'insegnante con ID: " + teacherID);
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante la cancellazione dell'insegnante: " + e.getMessage(), e);
+        }
+    }
 }

@@ -15,6 +15,13 @@ public class Course {
         this.active = active;
     }
 
+    public Course(Integer CourseID, LevelName level, LocalDate activationDate, boolean active) {
+        this.courseID = CourseID;
+        this.level = level;
+        this.activationDate = activationDate;
+        this.active = active;
+    }
+
     // Getters
     public int getCourseID() { return courseID; }
     public LevelName getLevel() { return level; }

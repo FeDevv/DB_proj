@@ -16,7 +16,7 @@ import java.util.List;
 
 public class LessonDAO {
 
-    public List<Lesson> getLessonsByCourse(int progressiveCode, LevelName level, Credentials creds)
+    public static List<Lesson> getLessonsByCourse(int progressiveCode, LevelName level, Credentials creds)
             throws DataAccessException {
 
         String sql = "SELECT progressive_code, level_name, day_of_week, "
@@ -63,7 +63,7 @@ public class LessonDAO {
         }
     }
 
-    public void deleteLesson(Lesson lesson, Credentials creds) throws DataAccessException {
+    public static void deleteLesson(Lesson lesson, Credentials creds) throws DataAccessException {
         String sql = "DELETE FROM lessons WHERE progressive_code = ? AND level_name = ? "
                 + "AND day_of_week = ? AND start_hour = ? AND start_minute = ?";
 

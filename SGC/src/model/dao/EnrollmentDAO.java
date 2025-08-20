@@ -1,6 +1,7 @@
 package model.dao;
 
 import exception.DataAccessException;
+import model.domain.Course;
 import model.domain.Credentials;
 import model.domain.LevelName;
 
@@ -9,6 +10,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.util.List;
 
 public class EnrollmentDAO {
     //funzione per iscrivere uno studente
@@ -62,5 +64,6 @@ public class EnrollmentDAO {
             throw new DataAccessException("Errore nel controllo iscrizione: " + e.getMessage(), e);
         }
     }
+
 }
 

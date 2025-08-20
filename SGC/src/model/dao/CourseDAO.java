@@ -123,12 +123,11 @@ public class CourseDAO {
                 LocalDate startDate = (rs.wasNull()) ? null : LocalDate.of(year, month, day);
 
                 Course newCourse = new Course(
+                        rs.getInt("courseID"),
                         LevelName.valueOf(rs.getString("levelName")),
                         startDate,
                         rs.getBoolean("active")
                 );
-
-                newCourse.setCourseID(rs.getInt("CourseID"));
 
                 courses.add(newCourse);
             }
@@ -162,7 +161,7 @@ public class CourseDAO {
     }
 
     // funzione che prende i corsi legati ad uno student ID
-    public List<Course> getCoursesByStudent(int studentId, Credentials creds) throws DataAccessException {
+    public static List<Course> getCoursesByStudent(int studentId, Credentials creds) throws DataAccessException {
         String sql = "SELECT c.* FROM courses c " +
                 "JOIN enrollments e ON c.courseID = e.course_id AND c.level_name = e.level_name " +
                 "WHERE e.student_id = ? AND c.active = TRUE";
@@ -233,6 +232,58 @@ public class CourseDAO {
             throw new DataAccessException("Errore verifica corso condiviso: " + e.getMessage(), e);
         }
     }
+
+    public void deleteCourse(int courseID, LevelName level, Credentials creds) throws DataAccessException {
+        String sql = "DELETE FROM courses WHERE courseID = ? AND levelName = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, courseID);
+            stmt.setString(2, level.name());
+
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows == 0) {
+                throw new DataAccessException("Nessun corso trovato con ID=" + courseID + " e livello=" + level);
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante la cancellazione del corso: " + e.getMessage(), e);
+        }
+    }
+
+    public Course getCourseByIdAndLevel(int courseID, LevelName level, Credentials creds) throws DataAccessException {
+        String sql = "SELECT * FROM courses WHERE courseID = ? AND levelName = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, courseID);
+            stmt.setString(2, level.name());
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    int day = rs.getInt("start_day");
+                    int month = rs.getInt("start_month");
+                    int year = rs.getInt("start_year");
+                    LocalDate startDate = (rs.wasNull()) ? null : LocalDate.of(year, month, day);
+                    return new Course(
+                            rs.getInt("courseID"),
+                            LevelName.valueOf(rs.getString("levelName")),
+                            startDate,
+                            rs.getBoolean("active")
+                    );
+                }
+                return null;
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante il recupero del corso", e);
+        }
+    }
+
+
 }
 
 

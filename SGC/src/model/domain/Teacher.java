@@ -24,6 +24,19 @@ public class Teacher {
         this.streetNumber = streetNumber;
     }
 
+    public Teacher(Integer teacherID, String name, String lastName, String nation,
+                   boolean active, String city, String cap, String street, int streetNumber) {
+        this.teacherID = teacherID;
+        this.name = name;
+        this.lastName = lastName;
+        this.nation = nation;
+        this.active = active;
+        this.city = city;
+        this.cap = cap;
+        this.street = street;
+        this.streetNumber = streetNumber;
+    }
+
     // Getters
     public int getTeacherID() { return teacherID; }
     public String getName() { return name; }

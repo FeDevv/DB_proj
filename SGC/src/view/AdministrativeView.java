@@ -9,14 +9,16 @@ import java.io.InputStreamReader;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class AdministrativeView {
 
     public static void showWelcomeMessage(String username) {
-        System.out.println("Accesso come personale Amministrativo");
+        System.out.println("Accesso come PERSONALE AMMINISTRATIVO");
         System.out.println("Benvenuto, " + username);
     }
 
@@ -32,8 +34,7 @@ public class AdministrativeView {
         System.out.println("8. IN1 - Inserimento nuovo insegnante");
         System.out.println("9. ASe1 - Assegnazione insegnante a corso");
         System.out.println("10. RP1 - Generazione report mensile");
-        System.out.println("11. RP2 - Generazione report settimanale");
-        System.out.println("12. VS1 - Visualizzazione assenze classe");
+        System.out.println("11. VS1 - Visualizzazione assenze classe");
         System.out.println("0. Logout");
         System.out.print("Scelta >> ");
         try {
@@ -132,14 +133,7 @@ public class AdministrativeView {
         System.out.println("\n--- INSERIMENTO NUOVO CORSO ---");
 
         // Input livello
-        System.out.println("Livelli disponibili:");
-        LevelName[] levels = LevelName.values();
-        for (int i = 0; i < levels.length; i++) {
-            System.out.println((i+1) + ". " + levels[i]);
-        }
-        System.out.print("Seleziona livello (1-" + levels.length + "): ");
-        int levelChoice = Integer.parseInt(reader.readLine().trim());
-        LevelName level = levels[levelChoice - 1];
+        LevelName level = choseLevel();
 
         // Input data attivazione
         System.out.print("Data attivazione (gg/mm/aaaa): ");
@@ -246,7 +240,7 @@ public class AdministrativeView {
                 birthDate, city, cap, street, streetNumber);
     }
 
-    public static void showAvailableCourses(List<Course> courses) {
+    public static void showSelectedCourses(List<Course> courses) {
         System.out.println("\n--- CORSI DISPONIBILI ---");
         System.out.println("ID\tLivello\t\tData inizio\tStato");
         int index = 1;
@@ -266,7 +260,7 @@ public class AdministrativeView {
             return null;
         }
 
-        showAvailableCourses(courses);
+        showSelectedCourses(courses);
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         int scelta = -1;
@@ -353,7 +347,6 @@ public class AdministrativeView {
         // active = true di default
         return new Teacher(name, lastName, nation, true, city, cap, street, streetNumber);
     }
-
     //selezioni alcuni insegnanti dal totale
     public static List<Teacher> getSomeTeachers(List<Teacher> teachers) throws IOException {
 
@@ -398,10 +391,157 @@ public class AdministrativeView {
         return ids + "\n" + "-".repeat(30) + "\n" + note;
     }
 
+    public static void showLessons(List<Lesson> lessons) throws IOException {
 
+        if (lessons == null || lessons.isEmpty()) {
+            System.out.println("\nNessuna lezione disponibile.");
+            return;
+        }
+
+        // Mostra elenco numerato
+        System.out.println("\n=== LEZIONI DISPONIBILI ===");
+        for (int i = 0; i < lessons.size(); i++) {
+            Lesson l = lessons.get(i);
+            System.out.printf("%d) %s - Livello: %s - Aula: %s%n",
+                    i + 1,
+                    l.getDayOfWeek() + " " + l.getFormattedTime(),
+                    l.getLevel(),
+                    l.getClassroom());
+        }
+
+    }
+
+    public static Lesson chooseLesson(List<Lesson> lessons) throws IOException {
+        if (lessons == null || lessons.isEmpty()) {
+            System.out.println("Nessuna lezione disponibile.");
+            return null;
+        }
+
+        showLessons(lessons); // funzione analoga a showSelectedCourses, che stampa le lezioni
+
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        int scelta = -1;
+
+        do {
+            System.out.print("Seleziona una lezione (1-" + lessons.size() + "): ");
+            String input = reader.readLine();
+
+            try {
+                scelta = Integer.parseInt(input);
+            } catch (NumberFormatException e) {
+                System.out.println("Input non valido, inserisci un numero intero.");
+                continue;
+            }
+
+            if (scelta < 1 || scelta > lessons.size()) {
+                System.out.println("Numero fuori intervallo. Riprova.");
+            }
+
+        } while (scelta < 1 || scelta > lessons.size());
+
+        return lessons.get(scelta - 1);
+    }
+
+    public static void showDeleteMenu() throws IOException {
+        System.out.println("\n=== GESTIONE CANCELLAZIONI ===");
+        System.out.println("1. Cancella Studente");
+        System.out.println("2. Cancella Insegnante");
+        System.out.println("3. Cancella Corso");
+        System.out.println("4. Cancella Lezione");
+        System.out.println("5. Cancella Iscrizione");
+        System.out.println("6. Cancella Assenza");
+        System.out.println("0. Torna al menu principale");
+
+        System.out.println("Seleziona un opzione");
+    }
 
     public static void showInvalidOption() {
         System.out.println("Opzione non valida, riprova.");
+    }
+
+    public static LevelName choseLevel() throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+        System.out.println("Livelli disponibili:");
+        LevelName[] levels = LevelName.values();
+        for (int i = 0; i < levels.length; i++) {
+            System.out.println((i+1) + ". " + levels[i]);
+        }
+        System.out.print("Seleziona livello (1-" + levels.length + "): ");
+        int levelChoice = Integer.parseInt(reader.readLine().trim());
+        return levels[levelChoice - 1];
+    }
+
+    public static boolean confirmAction(String message) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+        while (true) {
+            System.out.println("\n" + message);
+            System.out.print("Confermi? (S/N): ");
+
+            String response = reader.readLine().trim().toLowerCase();
+
+            if (response.equals("s") || response.equals("si")) {
+                return true;
+            } else if (response.equals("n") || response.equals("no")) {
+                return false;
+            } else {
+                System.out.println("Risposta non valida. Inserisci 'S' per confermare o 'N' per annullare.");
+            }
+        }
+    }
+
+    public static void showStudentDetails(Student student) {
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("ID: " + student.getStudentID());
+        System.out.println("Nome: " + student.getName());
+        System.out.println("Cognome: " + student.getLastName());
+        System.out.println("CF: " + student.getCf());
+        System.out.println("Data di nascita: "+ student.getBirthDate());
+        System.out.println("--------------------------------------------------------------");
+    }
+
+    public static void showCourseDetails(Course course) {
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("ID :"+course.getCourseID());
+        System.out.println("Livello: "+course.getLevel());
+        System.out.println("Data attivazione: "+course.getActivationDate());
+        System.out.println("--------------------------------------------------------------");
+    }
+
+    public static void showTeacherDetails(Teacher teacher) {
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("ID :"+teacher.getTeacherID());
+        System.out.println("Nome: "+teacher.getName());
+        System.out.println("Cognome: "+teacher.getLastName());
+        System.out.println("Nazione: "+teacher.getNation());
+        System.out.println("--------------------------------------------------------------");
+    }
+
+    public static void showAdministratorDetails(Administrator administrator) {
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("ID :"+administrator.getAdministratorID());
+        System.out.println("Nome: "+administrator.getName());
+        System.out.println("Cognome: "+administrator.getLastName());
+        System.out.println("Email: "+administrator.getEmail());
+        System.out.println("--------------------------------------------------------------");
+    }
+
+    public static void showMonthlyReportDetails(MonthlyReport monthlyReport) {
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("ID :"+monthlyReport.getReportID());
+        System.out.println("Data: "+monthlyReport.getDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
+        System.out.println("Contenuto: "+monthlyReport.getData());
+        System.out.println("--------------------------------------------------------------");
+    }
+
+    public static void showWeeklyReportDetails(WeeklyReport weeklyReport) {
+        System.out.println("--------------------------------------------------------------");
+        System.out.println("ID: "+weeklyReport.getWeeklyReportID());
+        System.out.println("settimana: "+weeklyReport.getWeekNumber());
+        System.out.println("anno: "+weeklyReport.getYear());
+        System.out.println("Contenuto: "+weeklyReport.getData());
+        System.out.println("--------------------------------------------------------------");
     }
 
 }

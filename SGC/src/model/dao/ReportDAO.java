@@ -14,7 +14,7 @@ import java.util.Locale;
 
 public class ReportDAO {
 
-    public static int insertMonthlyReport(MonthlyReport report, int adminID, List<Integer> teacherIDs, Credentials credentials)
+    public static int insertMonthlyReport(MonthlyReport report, List<Integer> teacherIDs, Credentials credentials)
             throws DataAccessException {
 
         Connection conn = null;
@@ -33,12 +33,11 @@ public class ReportDAO {
             conn.setAutoCommit(false); // Inizia transazione
 
             // 1. Inserimento del report principale
-            String reportSql = "INSERT INTO monthlyReport (adminID, date, data) VALUES (?, ?, ?)";
+            String reportSql = "INSERT INTO monthlyReport (date, data) VALUES (?, ?)";
             reportStmt = conn.prepareStatement(reportSql, Statement.RETURN_GENERATED_KEYS);
 
-            reportStmt.setInt(1, adminID);
-            reportStmt.setDate(2, Date.valueOf(report.getDate()));
-            reportStmt.setString(3, report.getData());
+            reportStmt.setDate(1, Date.valueOf(report.getDate()));
+            reportStmt.setString(2, report.getData());
 
             int affectedRows = reportStmt.executeUpdate();
             if (affectedRows == 0) {
@@ -108,7 +107,6 @@ public class ReportDAO {
 
         return false;
     }
-
 
     public static int insertWeeklyReport(WeeklyReport report, Credentials credentials) throws DataAccessException {
 
@@ -180,6 +178,88 @@ public class ReportDAO {
         return false;
     }
 
+    public static MonthlyReport getMonthlyReportByID(int reportID, Credentials credentials) throws DataAccessException {
+        String sql = "SELECT * FROM monthly_reports WHERE reportID = ?";
 
+        try (Connection conn = ConnectionFactory.getConnection(credentials);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
+            stmt.setInt(1, reportID);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new MonthlyReport(
+                            rs.getInt("reportID"),
+                            rs.getDate("date").toLocalDate(),
+                            rs.getString("data")
+                    );
+                }
+                return null;
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante il recupero del report mensile con ID: " + reportID, e);
+        }
+    }
+
+    public static void deleteMonthlyReport(int reportID, Credentials creds) throws DataAccessException {
+        String sql = "DELETE FROM monthly_reports WHERE reportID = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, reportID);
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows == 0) {
+                throw new DataAccessException("Impossibile eliminare il report mensile con ID: " + reportID);
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante la cancellazione del report mensile: " + e.getMessage(), e);
+        }
+    }
+
+    public static WeeklyReport getWeeklyReportByID(int weeklyReportID, Credentials credentials) throws DataAccessException {
+        String sql = "SELECT * FROM weekly_reports WHERE weeklyReportID = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection(credentials);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, weeklyReportID);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return new WeeklyReport(
+                            rs.getInt("reportID"),
+                            rs.getInt("weekNumber"),
+                            rs.getInt("year"),
+                            rs.getString("data")
+                    );
+                }
+                return null;
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante il recupero del report settimanale con ID: " + weeklyReportID, e);
+        }
+    }
+
+    public static void deleteWeeklyReport(int weeklyReportID, Credentials creds) throws DataAccessException {
+        String sql = "DELETE FROM weekly_reports WHERE weeklyReportID = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, weeklyReportID);
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows == 0) {
+                throw new DataAccessException("Impossibile eliminare il report settimanale con ID: " + weeklyReportID);
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante la cancellazione del report settimanale: " + e.getMessage(), e);
+        }
+    }
 }

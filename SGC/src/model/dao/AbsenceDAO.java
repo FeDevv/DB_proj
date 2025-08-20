@@ -36,7 +36,7 @@ public class AbsenceDAO {
         }
     }
 
-    public List<Absence> getAbsencesByStudent(int studentId, Credentials creds) throws DataAccessException {
+    public static List<Absence> getAbsencesByStudent(int studentId, Credentials creds) throws DataAccessException {
         String sql = "SELECT * FROM absences WHERE student_id = ? ORDER BY absence_year DESC, absence_month DESC, absence_day DESC";
         List<Absence> absences = new ArrayList<>();
 
@@ -65,5 +65,27 @@ public class AbsenceDAO {
         }
     }
 
+    public static int getAbsenceCountByStudentAndYear(int studentId, int year, Credentials creds) throws DataAccessException {
+        String sql = "SELECT COUNT(*) AS absence_count " +
+                "FROM absences " +
+                "WHERE student_id = ? AND absence_year = ?";
 
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, studentId);
+            stmt.setInt(2, year);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("absence_count");
+                }
+            }
+
+            return 0; // Nessuna assenza trovata
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore nel recupero conteggio assenze: " + e.getMessage(), e);
+        }
+    }
 }

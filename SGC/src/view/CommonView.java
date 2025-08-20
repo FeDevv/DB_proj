@@ -1,16 +1,15 @@
 package view;
 
 import model.Utils.DateUtils;
-import model.domain.Absence;
-import model.domain.Course;
-import model.domain.LevelName;
-import model.domain.Student;
+import model.domain.*;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 public class CommonView {
 
@@ -95,21 +94,6 @@ public class CommonView {
         return new Absence(studentId, date);
     }
 
-    public static void showAbsences(List<Absence> absences) {
-        if (absences == null || absences.isEmpty()) {
-            System.out.println("Nessuna assenza registrata.");
-            return;
-        }
-
-        System.out.println("\n--- ELENCO ASSENZE ---");
-        System.out.println("Data");
-        System.out.println("--------------------------------");
-
-        for (Absence absence : absences) {
-            System.out.printf("%s%n", DateUtils.formatDate(absence.getDate()));
-        }
-    }
-
     public static void showMessage(String message) {
         System.out.println(message);
     }
@@ -120,6 +104,42 @@ public class CommonView {
         generic = reader.readLine();
 
         return generic;
+    }
+
+    public static int getGenericInteger() throws IOException {
+        int generic;
+        System.out.print(">> ");
+        generic = Integer.parseInt(reader.readLine().trim());
+
+        return generic;
+    }
+
+    public static void showStudentsAbsences(List<Student> students, Map<Integer, Integer> absenceCounts) {
+        if (students == null || students.isEmpty()) {
+            System.out.println("\nNessuno studente trovato nel sistema.");
+            return;
+        }
+
+        System.out.println("\n=== ELENCO ASSENZE STUDENTI ===");
+        System.out.println("-------------------------------------------------------------------");
+        System.out.printf("%-4s %-5s %-20s %-20s %-10s%n",
+                "N.", "ID", "Nome", "Cognome", "Assenze");
+        System.out.println("-------------------------------------------------------------------");
+
+        int counter = 1;
+        for (Student s : students) {
+            int absences = absenceCounts.getOrDefault(s.getStudentID(), 0);
+
+            System.out.printf("%-4d %-5d %-20s %-20s %-10d%n",
+                    counter++,
+                    s.getStudentID(),
+                    s.getName(),
+                    s.getLastName(),
+                    absences);
+        }
+
+        System.out.println("-------------------------------------------------------------------");
+        System.out.println("Totale studenti: " + students.size());
     }
 
 }

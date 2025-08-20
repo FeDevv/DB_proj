@@ -25,11 +25,10 @@ public class WeeklyReport {
     }
 
     // Costruttore completo
-    public WeeklyReport(Integer weeklyReportID, int weekNumber, int year, LocalDate reportDate, String data) {
+    public WeeklyReport(Integer weeklyReportID, int weekNumber, int year, String data) {
         this.weeklyReportID = weeklyReportID;
         this.weekNumber = weekNumber;
         this.year = year;
-        this.reportDate = reportDate;
         this.data = data;
     }
 

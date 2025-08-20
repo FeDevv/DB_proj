@@ -156,4 +156,24 @@ public class StudentDAO {
             throw new DataAccessException("Errore nel recupero studente: " + e.getMessage(), e);
         }
     }
+
+    public void deleteStudent(int studentID, Credentials creds) throws DataAccessException {
+        String sql = "DELETE FROM students WHERE studentID = ?";
+
+        try (Connection conn = ConnectionFactory.getConnection(creds);
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, studentID);
+            int affectedRows = stmt.executeUpdate();
+
+            // Controlliamo il risultato dell'operazione
+            if (affectedRows == 0) {
+                throw new DataAccessException("Impossibile eliminare lo studente con ID: " + studentID);
+            }
+
+        } catch (SQLException e) {
+            throw new DataAccessException("Errore durante la cancellazione dello studente: " + e.getMessage(), e);
+        }
+    }
+
 }

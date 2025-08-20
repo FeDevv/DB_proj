@@ -1,6 +1,7 @@
 package controller;
 
 import exception.DataAccessException;
+import model.Utils.AssignmentGeneratorUtils;
 import model.Utils.InternalConflictsUtils;
 import model.dao.*;
 import model.domain.*;
@@ -8,13 +9,11 @@ import view.AdministrativeView;
 import view.CommonView;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-
-import static view.CommonView.askCourseSelection;
-import static view.CommonView.showStudentsList;
 
 public class AdministrativeController extends UserController{
 
@@ -33,7 +32,7 @@ public class AdministrativeController extends UserController{
     }
 
     @Override
-    protected boolean handleMenuChoice(int choice) throws IOException, DataAccessException {
+    protected boolean handleMenuChoice(int choice) throws IOException, DataAccessException, SQLException {
         switch (choice) {
             case 1 -> {
                 //stampa studenti di un corso
@@ -67,27 +66,23 @@ public class AdministrativeController extends UserController{
                 //crea un nuovo insegnante e inseriscilo nel DB
                 addTeacher();
             }
-            case 9 -> CommonView.showMessage("Assegnazione insegnante a corso...");
+            case 9 -> {
+                //assegna insegnante a corso
+                assigningTeacher();
+            }
             case 10 -> {
                 generateMonthlyReport();
             }
-            case 11 -> CommonView.showMessage("Visualizzazione assenze classe...");
+            case 11 -> {
+                showCourseAbsences();
+            }
+            case 12 -> {
+                handleDeleteMenu();
+            }
             case 0 -> { return false; } // Logout
             default -> AdministrativeView.showInvalidOption();
         }
         return true;
-    }
-
-    @Override
-    protected void printStudentsFromCourse() {
-        //Stampa elenco studenti del corso
-        Course course = askCourseSelection();
-        if(course == null) {
-            CommonView.showMessage("Selezione corso non valida");
-        } else {
-            List<Student> students = fetchStudentsForCourse(course.getCourseID(), course.getLevel());
-            showStudentsList(students);
-        }
     }
 
     protected void printAllTeachers() {
@@ -115,7 +110,6 @@ public class AdministrativeController extends UserController{
             // Utilizza un metodo dedicato per ottenere l'ID insegnante
             int teacherId = getTeacherIdFromUser();
 
-            CourseDAO assignedCoursesDAO = new CourseDAO();
             List<Course> courses = CourseDAO.getCoursesByTeacher(teacherId, creds);
 
             // Controlla se ci sono corsi prima di mostrarli
@@ -310,7 +304,7 @@ public class AdministrativeController extends UserController{
                     .collect(Collectors.toList());
 
             // 7. Inserimento nel database
-            int reportID = reportDAO.insertMonthlyReport(report, creds.getID(), teacherIDs, creds);
+            int reportID = ReportDAO.insertMonthlyReport(report, teacherIDs, creds);
 
             CommonView.showMessage("Report mensile creato con ID: " + reportID);
 
@@ -323,8 +317,351 @@ public class AdministrativeController extends UserController{
         }
     }
 
+    private void assigningTeacher() throws DataAccessException, IOException, SQLException {
+        try {
+            TeacherDAO teacherDAO = new TeacherDAO();
+            List<Teacher> teachers = teacherDAO.getAllActiveTeachers(creds);
+
+            CourseDAO courseDAO = new CourseDAO();
+            List<Course> courses = courseDAO.getActiveCourses(creds);
+
+            CommonView.showMessage("Scegli gli insegnanti / l'insegnante");
+            AdministrativeView.showTeachersList(teachers);
+            List<Teacher> chosenTeachers = AdministrativeView.getSomeTeachers(teachers);
+
+            CommonView.showMessage("scegli il corso");
+            AdministrativeView.showSelectedCourses(courses);
+            Course chosenCourse = AdministrativeView.chooseCourse(courses);
+
+            //prendi tutte le lezioni del corso per
+            LessonDAO lessonDAO = new LessonDAO();
+            if (chosenCourse == null) {
+                CommonView.showMessage("Errore nella scelta del corso.");
+                return;
+            }
+            List<Lesson> lessons = LessonDAO.getLessonsByCourse(chosenCourse.getCourseID(), chosenCourse.getLevel(), creds);
+
+            //mostra le lezioni
+            AdministrativeView.showLessons(lessons);
+
+            //controlla no overlap con orari insegnanti
+            AssignmentDAO.checkScheduleConflicts(chosenTeachers, lessons, creds);
+
+            //crea assegnazioni se non ci sono conflitti
+            List<Assignment> assignments = AssignmentGeneratorUtils.generateAssignments(chosenTeachers, lessons, chosenCourse.getCourseID());
+            AssignmentDAO.insertAssignments(assignments, creds);
+        } catch (DataAccessException | IOException | SQLException e) {
+            CommonView.showMessage("Errore durante l'assegnazione: " + e.getMessage());
+        }
+
+    }
+
     @Override
-    protected void showExitMessage() {
-        CommonView.showExitMessage(creds.getUsername());
+    protected List<Student> loadStudentsForCourse(Course course) throws DataAccessException {
+        StudentDAO studentDAO = new StudentDAO();
+        return studentDAO.getStudentsByCourse(
+                course.getCourseID(),
+                course.getLevel(),
+                null,
+                creds
+        );
+    }
+
+    private void handleDeleteMenu() throws IOException, DataAccessException {
+        boolean exit = false;
+        int choice;
+
+        while (!exit) {
+            AdministrativeView.showDeleteMenu();
+            choice = CommonView.getGenericInteger();
+            switch (choice) {
+                case 1 -> {
+                    //cancellazione corso
+                    deleteCourse();
+                }
+                case 2 -> {
+                    //cancellazione studente
+                    deleteStudent();
+                }
+                case 3 -> {
+                    //cancellazione insegnante
+                    deleteTeacher();
+                }
+                case 4 -> {
+                    //cancellazione admin
+                    deleteAdministrator();
+                }
+                case 5 -> {
+                    deleteWeeklyReport();
+                }
+                case 6 -> {
+                    deleteMonthlyReport();
+                }
+                case 7 -> {
+                    deleteLesson();
+                }
+                case 0 -> {exit = true;}
+                default -> {CommonView.showMessage("Scelta non valida.");}
+            }
+        }
+    }
+
+    private void deleteCourse() {
+        try {
+            // 1. Ottenere l'ID del corso
+            CommonView.showMessage("Inserisci l'ID del corso da eliminare:");
+            int courseID = CommonView.getGenericInteger();
+
+            // 2. Ottenere il livello del corso
+            CommonView.showMessage("Scegli il livello del corso:");
+            LevelName level = AdministrativeView.choseLevel();
+
+            // 3. Verificare l'esistenza del corso
+            CourseDAO courseDAO = new CourseDAO();
+            Course course = courseDAO.getCourseByIdAndLevel(courseID, level, creds);
+
+            if (course == null) {
+                CommonView.showMessage("Nessun corso trovato con ID " + courseID + " e livello " + level);
+                return;
+            }
+
+            AdministrativeView.showCourseDetails(course);
+
+            // 5. Richiedere conferma
+            boolean confirm = AdministrativeView.confirmAction(
+                    "Sei sicuro di voler eliminare questo corso e tutti i dati associati?\n" +
+                            "Questa operazione non può essere annullata."
+            );
+
+            if (confirm) {
+                courseDAO.deleteCourse(courseID, level, creds);
+                CommonView.showMessage("Corso eliminato con successo.");
+            } else {
+                CommonView.showMessage("Operazione annullata.");
+            }
+
+        } catch (DataAccessException e) {
+            CommonView.showMessage("Errore di accesso al database: " + e.getMessage());
+        } catch (IOException e) {
+            CommonView.showMessage("Errore di input: " + e.getMessage());
+        }
+    }
+
+    private void deleteStudent() throws IOException, DataAccessException {
+        try{
+            CommonView.showMessage("inserisci l'ID dello studente");
+            int studentID = CommonView.getGenericInteger();
+            StudentDAO studentDAO = new StudentDAO();
+            Student student = studentDAO.getStudentByID(studentID, creds);
+
+            if (student == null) {
+                CommonView.showMessage("Studente non trovato con ID: " + studentID);
+                return;
+            }
+
+            AdministrativeView.showStudentDetails(student);
+
+            boolean confirm = AdministrativeView.confirmAction("Sei sicuro di voler eliminare questo studente e tutti i dati associati?\n" +
+                    "Questa operazione non può essere annullata.");
+
+            if (confirm) {
+                studentDAO.deleteStudent(studentID, creds);
+                CommonView.showMessage("Studente eliminato con successo.");
+            } else {
+                CommonView.showMessage("Operazione annullata.");
+            }
+
+        } catch (DataAccessException e) {
+            CommonView.showMessage("Errore durante l'eliminazione: " + e.getMessage());
+        }
+    }
+
+    private void deleteTeacher() throws IOException, DataAccessException {
+        try{
+            // 1. Ottenere l'ID dell'insegnante
+            CommonView.showMessage("Inserisci l'ID dell'insegnante da eliminare:");
+            int teacherID = CommonView.getGenericInteger();
+
+            // 2. Verificare l'esistenza dell'insegnante
+            TeacherDAO teacherDAO = new TeacherDAO();
+            Teacher teacher = teacherDAO.getTeacherById(teacherID, creds);
+
+            if (teacher == null) {
+                CommonView.showMessage("Nessun insegnante trovato con ID " + teacherID);
+                return;
+            }
+
+            AdministrativeView.showTeacherDetails(teacher);
+
+            boolean confirm = AdministrativeView.confirmAction(
+                    "Sei sicuro di voler eliminare questo insegnante e tutti i dati associati?\n" +
+                            "Questa operazione non può essere annullata."
+            );
+
+            if (confirm) {
+                teacherDAO.deleteTeacher(teacherID, creds);
+                CommonView.showMessage("Insegnante eliminato con successo.");
+            } else {
+                CommonView.showMessage("Operazione annullata.");
+            }
+
+        }catch (DataAccessException e) {
+            CommonView.showMessage("Errore di accesso al database: " + e.getMessage());
+        } catch (IOException e) {
+            CommonView.showMessage("Errore di input: " + e.getMessage());
+        }
+    }
+
+    private void deleteAdministrator() throws IOException, DataAccessException {
+        try{
+            // 1. Ottenere l'ID dell'amministratore
+            CommonView.showMessage("Inserisci l'ID dell'amministratore da eliminare:");
+            int adminID = CommonView.getGenericInteger();
+
+            // 2. Verificare l'esistenza dell'amministratore
+            AdministratorDAO adminDAO = new AdministratorDAO();
+            Administrator admin = adminDAO.getAdministratorById(adminID, creds);
+
+            if (admin == null) {
+                CommonView.showMessage("Nessun amministratore trovato con ID " + adminID);
+                return;
+            }
+
+            AdministrativeView.showAdministratorDetails(admin);
+
+            if (adminDAO.getAdministratorCount(creds) <= 1) {
+                CommonView.showMessage("Impossibile eliminare l'ultimo amministratore del sistema.");
+                return;
+            }
+
+            boolean confirm = AdministrativeView.confirmAction(
+                    "Sei sicuro di voler eliminare questo amministratore?\n" +
+                            "Questa operazione non può essere annullata."
+            );
+
+            if (confirm) {
+                adminDAO.deleteAdministrator(adminID, creds);
+                CommonView.showMessage("Amministratore eliminato con successo.");
+            } else {
+                CommonView.showMessage("Operazione annullata.");
+            }
+
+        }catch (DataAccessException e) {
+            CommonView.showMessage("Errore di accesso al database: " + e.getMessage());
+        } catch (IOException e) {
+            CommonView.showMessage("Errore di input: " + e.getMessage());
+        }
+
+    }
+
+    private void deleteWeeklyReport() throws IOException, DataAccessException {
+        try{
+            CommonView.showMessage("Inserisci l'ID del report settimanale da rimuovere:");
+            int reportID = CommonView.getGenericInteger();
+
+            WeeklyReport report = ReportDAO.getWeeklyReportByID(reportID, creds);
+
+            if (report == null) {
+                CommonView.showMessage("Nessun report trovato con ID " + reportID);
+                return;
+            }
+
+            AdministrativeView.showWeeklyReportDetails(report);
+
+            boolean confirm = AdministrativeView.confirmAction(
+                    "Sei sicuro di voler eliminare questo report?\n" +
+                            "Questa operazione non può essere annullata."
+            );
+
+            if (confirm) {
+                ReportDAO.deleteWeeklyReport(reportID, creds);
+                CommonView.showMessage("Report settimanale eliminato con successo.");
+            } else {
+                CommonView.showMessage("Operazione annullata.");
+            }
+        }catch (DataAccessException e) {
+            CommonView.showMessage("Errore di accesso al database: " + e.getMessage());
+        }catch (IOException e) {
+            CommonView.showMessage("Errore di input: " + e.getMessage());
+        }
+    }
+
+    private void deleteMonthlyReport() throws IOException, DataAccessException {
+        try {
+            CommonView.showMessage("Inserisci l'ID del report mensile da rimuovere:");
+            int reportID = CommonView.getGenericInteger();
+
+            MonthlyReport report = ReportDAO.getMonthlyReportByID(reportID, creds);
+
+            if (report == null) {
+                CommonView.showMessage("Nessun report trovato con ID " + reportID);
+                return;
+            }
+
+            AdministrativeView.showMonthlyReportDetails(report);
+
+            boolean confirm = AdministrativeView.confirmAction(
+                    "Sei sicuro di voler eliminare questo report?\n" +
+                            "Questa operazione non può essere annullata."
+            );
+
+            if (confirm) {
+                ReportDAO.deleteMonthlyReport(reportID, creds);
+                CommonView.showMessage("Report mensile eliminato con successo.");
+            } else {
+                CommonView.showMessage("Operazione annullata.");
+            }
+        }catch (DataAccessException e) {
+            CommonView.showMessage("Errore di accesso al database: " + e.getMessage());
+        }catch (IOException e) {
+            CommonView.showMessage("Errore di input: " + e.getMessage());
+        }
+
+    }
+
+    private void deleteLesson()  throws IOException, DataAccessException {
+        try {
+            // 1. Ottenere l'ID del corso
+            CommonView.showMessage("Inserisci l'ID del corso da eliminare:");
+            int courseID = CommonView.getGenericInteger();
+
+            // 2. Ottenere il livello del corso
+            CommonView.showMessage("Scegli il livello del corso:");
+            LevelName level = AdministrativeView.choseLevel();
+
+            // 3. Verificare l'esistenza del corso
+            CourseDAO courseDAO = new CourseDAO();
+            Course course = courseDAO.getCourseByIdAndLevel(courseID, level, creds);
+
+            if (course == null) {
+                CommonView.showMessage("Nessun corso trovato con ID " + courseID + " e livello " + level);
+                return;
+            }
+
+            CommonView.showMessage("Scegli la lezione da eliminare");
+
+            LessonDAO lessonDAO = new LessonDAO();
+            List<Lesson> lessons = LessonDAO.getLessonsByCourse(courseID, level, creds);
+
+            Lesson lesson = AdministrativeView.chooseLesson(lessons);
+
+            boolean confirm = AdministrativeView.confirmAction(
+                    "Sei sicuro di voler eliminare questa lezione?\n" +
+                            "Questa operazione non può essere annullata."
+            );
+
+            if (confirm) {
+                assert lesson != null;  //teoricamente gia controllato in chooseLesson, l'IDE me lo segna altrimenti
+                LessonDAO.deleteLesson(lesson, creds);
+                AssignmentDAO.deleteAssignment(lesson, creds);
+                CommonView.showMessage("lezione eliminata con successo.");
+            } else {
+                CommonView.showMessage("Operazione annullata.");
+            }
+        }catch (DataAccessException e) {
+            CommonView.showMessage("Errore di accesso al database: " + e.getMessage());
+        }catch (IOException e) {
+            CommonView.showMessage("Errore di input: " + e.getMessage());
+        }
     }
 }

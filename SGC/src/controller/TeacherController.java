@@ -1,17 +1,23 @@
 package controller;
 
 import exception.DataAccessException;
+import model.dao.AbsenceDAO;
 import model.dao.CourseDAO;
 import model.dao.ReportDAO;
+import model.dao.StudentDAO;
 import model.domain.Course;
 import model.domain.Credentials;
 import model.domain.Student;
 import model.domain.WeeklyReport;
+import view.AdministrativeView;
 import view.CommonView;
 import view.TeacherView;
 
+import java.io.IOException;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static view.CommonView.askCourseSelection;
 import static view.CommonView.showStudentsList;
@@ -47,22 +53,17 @@ public class TeacherController extends UserController{
             case 4 -> {
                 generateWeeklyReport();
             }
-            case 5 -> CommonView.showMessage("Storico assenze...");
-            case 0 -> { return false; } // Logout
-            default -> TeacherView.showInvalidOption();
+            case 5 -> {
+                showCourseAbsences();
+            }
+            case 0 -> {
+                return false;
+            } // Logout
+            default -> {
+                TeacherView.showInvalidOption();
+            }
         }
         return true;
-    }
-
-    @Override
-    protected void printStudentsFromCourse() {
-        Course course = askCourseSelection();
-        if(course == null) {
-            CommonView.showMessage("Selezione corso non valida");
-        } else {
-            List<Student> students = fetchStudentsForCourse(course.getCourseID(), course.getLevel());
-            showStudentsList(students);
-        }
     }
 
     protected void showCourses() {
@@ -112,7 +113,13 @@ public class TeacherController extends UserController{
     }
 
     @Override
-    protected void showExitMessage() {
-        CommonView.showExitMessage(creds.getUsername());
+    protected List<Student> loadStudentsForCourse(Course course) throws DataAccessException {
+        StudentDAO studentDAO = new StudentDAO();
+        return studentDAO.getStudentsByCourse(
+                course.getCourseID(),
+                course.getLevel(),
+                creds.getID(),
+                creds
+        );
     }
 }
